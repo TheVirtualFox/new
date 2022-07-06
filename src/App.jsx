@@ -45,41 +45,35 @@ const N = 1000000;
 
 function App() {
 
+  // raw generated data
   const [rawData, setRawData] = useState(() => {
       return generateTableDate(N);
   });
   const onGenerateClick = () => {
       setRawData(generateTableDate(N));
   }
+  // data to show
+  const [data, setData] = useState([]);
 
+  // pagination
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-
-  const [data, setData] = useState([]);
   const [pages, setPages] = useState(0);
 
-  const onChangePageSize = useCallback((pageSize) => {
-      setPageSize(pageSize);
-  }, []);
-
-
+  // sorting and filtering
   const [sort, setSort] = useState({ columnName: 'id', state: 'asc' });
   const [selectors, setSelectors] = useState({});
-
   const [query, setQuery] = useState('');
-    const deferredQuery = useDebounce(query, 500);
-
-    const [isPending, startTransition] = useTransition();
+  const deferredQuery = useDebounce(query, 500);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-      setData(rawData.slice(0, pageSize));
-  }, []);
+    setPage(1);
+  }, [pageSize, deferredQuery, selectors, rawData]);
 
     useEffect(() => {
-        console.log(deferredQuery);
         const from = (page - 1) * pageSize;
         const to = from + pageSize;
-
 
         startTransition(() => {
             let data = [].concat(rawData);
@@ -89,18 +83,23 @@ function App() {
                     for (let selector in selectors) {
                         const {value} = selectors[selector];
                         if (obj[selector] === value) {
-
-
                             return true;
                         }
                     }
                     return false;
                 });
             }
+            const q = deferredQuery.toLowerCase().trim();
+            if (q) {
+                data = data.filter(({firstName, lastName, email, id, company}) => {
+                    const name = firstName.toLowerCase();
+                    const surname = lastName.toLowerCase();
+                    const e = email.toLowerCase();
+                    const c = company.toLowerCase();
+                    return [name, surname, e, c, id.toString()].some((value) => value.includes(q));
+                });
+            }
 
-            data = data.filter(({firstName, lastName}) => {
-                return firstName.toLowerCase().includes(deferredQuery) || lastName.toLowerCase().includes(deferredQuery);
-            });
             data.sort(sorter(sort));
             const length = data.length;
             data = data.slice(from, to);
@@ -113,22 +112,19 @@ function App() {
 
     }, [pageSize, page, sort, deferredQuery, selectors, rawData]);
 
+    const onChangePageSize = useCallback((pageSize) => {
+        setPageSize(pageSize);
+    }, []);
 
     const onChangeSort = useCallback((sort) => {
         setSort(sort);
     }, []);
-
-    useEffect(() => {
-        setPage(1);
-    }, [pageSize, deferredQuery, selectors, rawData]);
-
 
     const onQueryChange = useCallback((query) => {
         setQuery(query);
     }, []);
 
     const onChangeSelector = useCallback(({name, value}) => {
-
         if (value === ALL) {
             setSelectors((selectors) => {
                 return {};
@@ -143,15 +139,12 @@ function App() {
 
   return (
     <div className="App">
-
-        <Query query={query} onChange={onQueryChange} />
-
-        <button onClick={onGenerateClick}>Generate</button>
-
-        { isPending && <div>Loadin...</div> }
-        { !isPending && <Table sort={sort} data={data} config={config} onChangeSort={onChangeSort} selectors={selectors} onChangeSelector={onChangeSelector} />}
-
-        {pages} {page}
+      <Query query={query} onChange={onQueryChange} />
+      <button onClick={onGenerateClick}>Generate</button>
+      { isPending ?
+          <div>Loadin...</div> :
+          <Table sort={sort} data={data} config={config} onChangeSort={onChangeSort} selectors={selectors} onChangeSelector={onChangeSelector} />
+      }
       <PageSize value={pageSize} onChange={onChangePageSize} />
       <Pagination current={page} totalPages={pages} onChange={(page) => { setPage(page) }} />
     </div>

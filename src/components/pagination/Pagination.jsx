@@ -60,23 +60,16 @@ export const Pagination = ({
 
     const NextPage = (
         <button
-            disabled={current >= totalPages + 1}
+            disabled={current >= totalPages}
             onClick={() => onChange(current + 1)}
         >{maxCells > 5 ? "Next" : ''}</button>
     );
 
-    function handleResize(entries) {
-        if (entries[0].contentRect.width < 450) {
-            setMaxCells(5);
-        } else {
-            setMaxCells(maxCellsProp);
-        }
-    }
 
     return (
         <div className="pagination">
             {PrevPage}
-            {pagingCells(totalPages + 1, current, maxCells).map(
+            {pagingCells(!totalPages ? 1 : totalPages, current - 1, maxCells).map(
                 ({ nr, ellipsis }) => (
                     <button
                         className={`no-outline ${nr === current ? 'active' : ''}`}
